@@ -7,6 +7,20 @@ export default function Interview() {
   const [stress, setStress] = useState(10);
   const [eyeContact, setEyeContact] = useState(92);
 
+  const [interviewStarted, setInterviewStarted] = useState(false);
+
+  useEffect(() => {
+    const onMsg = (e) => {
+      const type = e?.data?.type;
+      if (type === "EMPLOYMENT_INTERVIEW_STARTED") setInterviewStarted(true);
+      if (type === "EMPLOYMENT_INTERVIEW_ENDED") setInterviewStarted(false);
+    };
+
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
+
   // Demo: call agent every 10s (replace later with real stress events)
   useEffect(() => {
     const t = setInterval(() => {
@@ -31,6 +45,7 @@ export default function Interview() {
       />
 
         {/* 3D recruiter overlay */}
+    {interviewStarted && (
     <div
       style={{
         position: "fixed",
@@ -49,6 +64,7 @@ export default function Interview() {
         evilMode={stress > 70}  
       />
     </div>
+    )}
 
       {/* Overlay panel (won't touch Claude file) */}
       <div

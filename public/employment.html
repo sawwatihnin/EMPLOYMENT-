@@ -1372,7 +1372,7 @@ function endInterview() {
   setTimeout(() => {
     document.getElementById('survival-fill').style.width = survivalScore + '%';
   }, 500);
-
+  window.parent?.postMessage({ type: "EMPLOYMENT_INTERVIEW_ENDED" }, "*");
   showScreen('screen-results');
 }
 

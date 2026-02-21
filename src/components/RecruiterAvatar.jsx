@@ -3,6 +3,8 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
+
+
 /**
  * Sets an initial camera position + lookAt target.
  * Runs whenever position/target change (both are stable/memoized).
@@ -444,7 +446,7 @@ export default function RecruiterAvatar({ isRecruiterTalking = true, laserMode =
   const fireOn = fireMode || evilMode;
 
   return (
-    <div style={{ width: 500, height: 500 }}>
+    <div style={{ width: "100%", height: "100%" }}>
       <Canvas
         style={{ width: "100%", height: "100%" }}
         camera={{
