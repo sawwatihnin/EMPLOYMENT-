@@ -1,9 +1,14 @@
+import { Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Interview from "./pages/Interview";
+import Results from "./pages/Results";
+
 export default function App() {
   return (
-    <div className="app">
-      <h1>FINAL ROUND</h1>
-      <p>The interview begins.</p>
-      <button>Start</button>
-    </div>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/interview" element={<Interview />} />
+      <Route path="/results" element={<Results />} />
+    </Routes>
   );
 }
