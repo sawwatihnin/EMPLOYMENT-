@@ -1,18 +1,7 @@
-import useEyeTracking from "../hooks/useEyeTracking";
-import useStressEngine from "../hooks/useStressEngine";
-import useHeartbeat from "../hooks/useHeartbeat";
-
-export default function Interview({ end }) {
-  const eyeData = useEyeTracking();
-  const stress = useStressEngine(eyeData);
-
-  useHeartbeat(stress);
-
+export default function Interview() {
   return (
-    <div className="interview-room">
-      <h1>Final Round</h1>
-      <p>Stress Level: {stress}</p>
-      <button onClick={() => end({ stress })}>End Interview</button>
+    <div style={{ textAlign: "center", marginTop: "40vh" }}>
+      <h2>Interview Running...</h2>
     </div>
   );
 }
