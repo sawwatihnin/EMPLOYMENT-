@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSharonAgent } from "../hooks/useSharonAgent";
+import RecruiterAvatar from "../components/RecruiterAvatar.jsx";
 
 export default function Interview() {
   const { line, speak } = useSharonAgent();
@@ -22,12 +23,32 @@ export default function Interview() {
   }, [stress, eyeContact, speak]);
 
   return (
-    <div style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
+    <div style={{ width: "100vw", height: "100vh", overflow: "hidden", position: "relative" }}>
       <iframe
         src="/employment.html"
         title="Employment Simulation"
         style={{ width: "100%", height: "100%", border: "none" }}
       />
+
+        {/* 3D recruiter overlay */}
+    <div
+      style={{
+        position: "fixed",
+        left: 240,        
+        top: 40,        
+        width: 400,       
+        height: 420,
+        zIndex: 9000,
+        pointerEvents: "none", 
+        overflow: "hidden",
+        borderRadius: 12,
+      }}
+    >
+      <RecruiterAvatar
+        isRecruiterTalking={true /* or based on your agent */}
+        evilMode={stress > 70}  
+      />
+    </div>
 
       {/* Overlay panel (won't touch Claude file) */}
       <div

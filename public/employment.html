@@ -1314,6 +1314,7 @@ function showScreen(id) {
 
 function startInterview() {
   showScreen('screen-interview');
+  window.parent?.postMessage({ type: "EMPLOYMENT_INTERVIEW_STARTED" }, "*");
   sessionStart = Date.now();
   stress = 0; peakStress = 0; demoTick = 0; demoPhase = 0;
 
