@@ -8,6 +8,7 @@ export default function Interview() {
   const [eyeContact, setEyeContact] = useState(92);
 
   const [interviewStarted, setInterviewStarted] = useState(false);
+  const [userTalking, setUserTalking] = useState(false);
 
   useEffect(() => {
     const onMsg = (e) => {
@@ -20,6 +21,39 @@ export default function Interview() {
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
+  // NEW: Spacebar listeners (hold-to-talk)
+  useEffect(() => {
+    const isTypingElement = (el) => {
+      if (!el) return false;
+      const tag = el.tagName?.toLowerCase();
+      return tag === "input" || tag === "textarea" || el.isContentEditable;
+    };
+
+    const onKeyDown = (e) => {
+      if (e.code !== "Space") return;
+      if (e.repeat) return;
+      if (isTypingElement(document.activeElement)) return;
+
+      e.preventDefault(); // stops page scroll
+      setUserTalking(true);
+    };
+
+    const onKeyUp = (e) => {
+      if (e.code !== "Space") return;
+      if (isTypingElement(document.activeElement)) return;
+
+      e.preventDefault();
+      setUserTalking(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown, { passive: false });
+    window.addEventListener("keyup", onKeyUp, { passive: false });
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, []);
 
   // Demo: call agent every 10s (replace later with real stress events)
   useEffect(() => {
@@ -35,6 +69,10 @@ export default function Interview() {
     // Speak on meaningful change, not every render
     speak({ stress, eyeContact });
   }, [stress, eyeContact, speak]);
+
+  // Recruiter talks when user is NOT talking
+  const recruiterTalking = interviewStarted && !userTalking;
+
 
   return (
     <div style={{ width: "100vw", height: "100vh", overflow: "hidden", position: "relative" }}>
@@ -60,7 +98,7 @@ export default function Interview() {
       }}
     >
       <RecruiterAvatar
-        isRecruiterTalking={true /* or based on your agent */}
+        isRecruiterTalking={recruiterTalking}
         evilMode={stress > 70}  
       />
     </div>
