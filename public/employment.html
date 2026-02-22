@@ -328,34 +328,10 @@
     transition: color 0.5s, border-color 0.5s;
   }
 
-  /* Eye tracking indicator */
-  .eye-track-overlay {
-    position: absolute;
-    top: 1rem; right: 1rem;
-    display: flex; flex-direction: column; gap: 0.4rem;
-    z-index: 10;
-  }
+ 
 
-  .eye-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #22ff44;
-    box-shadow: 0 0 8px #22ff44;
-    animation: eye-blink 3s infinite;
-  }
+  
 
-  .eye-dot.lost { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
-
-  @keyframes eye-blink {
-    0%, 90%, 100% { opacity: 1; }
-    95% { opacity: 0.1; }
-  }
-
-  .eye-label {
-    font-size: 0.5rem; color: #333; letter-spacing: 0.1em;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-  }
 
   /* ─── RIGHT PANEL ─── */
   .right-panel {
@@ -514,36 +490,6 @@
     border-top: 1px solid #0f0f12;
   }
 
-  .webcam-box {
-    background: var(--bg);
-    aspect-ratio: 4/3;
-    position: relative;
-    overflow: hidden;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  .webcam-placeholder {
-    font-size: 0.6rem;
-    color: #222;
-    letter-spacing: 0.1em;
-    text-align: center;
-  }
-
-  .webcam-gaze-dot {
-    position: absolute;
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: rgba(74,220,100,0.6);
-    box-shadow: 0 0 12px rgba(74,220,100,0.5);
-    transform: translate(-50%, -50%);
-    transition: all 0.1s;
-    pointer-events: none;
-  }
-
-  .webcam-status {
-    position: absolute; bottom: 4px; left: 6px;
-    font-size: 0.5rem; color: #333; letter-spacing: 0.1em;
-  }
 
   /* ─── BOTTOM QUESTION BAR ─── */
   .bottom-bar {
