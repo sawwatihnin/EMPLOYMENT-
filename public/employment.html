@@ -504,15 +504,6 @@
     font-size: 0.6rem; color: #333; letter-spacing: 0.15em; white-space: nowrap;
   }
 
-  .current-question-display {
-    flex: 1;
-    font-family: 'Special Elite', serif;
-    font-size: 0.9rem;
-    color: #888;
-    transition: color 0.5s;
-    line-height: 1.5;
-  }
-
   /* ─── VIGNETTE HEARTBEAT ─── */
   .vignette-overlay {
     position: fixed; inset: 0;
@@ -852,25 +843,12 @@
         <canvas class="ecg-canvas" id="ecg-canvas"></canvas>
       </div>
 
-      <!-- Question -->
-      <div class="question-section">
-        <div class="section-label">CURRENT QUESTION</div>
-        <div class="question-text" id="question-text" style="font-size:0.8rem;">
-          "Tell me about yourself. Where do you see yourself in five years?"
-        </div>
-        <div class="question-timer">
-          <div class="question-timer-fill" id="q-timer-fill" style="transform:scaleX(1)"></div>
-        </div>
-      </div>
 
       <!-- Webcam -->
     </div>
 
     <!-- BOTTOM BAR -->
-    <div class="bottom-bar">
-      <div class="question-indicator" id="q-counter">Q 1 / 8</div>
-      <div class="current-question-display" id="bottom-question">"Tell me about yourself. Where do you see yourself in five years?"</div>
-    </div>
+
 
   </div>
 
