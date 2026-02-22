@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSharonAgent, useSharonVoice } from "../hooks/useSharonAgent";
 import RecruiterAvatar from "../components/RecruiterAvatar.jsx";
+import { fetchSharonSpeech, getSharonLine } from '../services/sharonClient'
 
 export default function Interview() {
   const { line, speak } = useSharonAgent();
@@ -72,6 +73,9 @@ export default function Interview() {
     speak({ stress, eyeContact });
   }, [stress, eyeContact, speak]);
 
+  useEffect(() => {
+  if (line) fetchSharonSpeech(line, tier)
+   }, [line])
   // Recruiter talks when user is NOT talking
   const recruiterTalking = interviewStarted && !userTalking;
 
