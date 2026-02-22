@@ -89,9 +89,9 @@ export default function Interview() {
             style={{
               position: "absolute",
               /* anchor relative to the iframe viewport */
-              left: "28%",     // tweak
-              top: "9%",      // tweak
-              width: "22%",    // tweak
+              left: "19%",     // tweak
+              top: "-11%",      // tweak
+              width: "40%",    // tweak
               aspectRatio: "280 / 380", // keeps “portrait” shape
               zIndex: 9000,
               pointerEvents: "none",
