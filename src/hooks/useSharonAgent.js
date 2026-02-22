@@ -1,8 +1,20 @@
-// ADD to your existing useSharonAgent.js
-
-import { fetchSharonSpeech } from '../services/sharonClient'
+import { fetchSharonSpeech, getSharonLine } from '../services/sharonClient'
 import { useRef, useCallback, useState } from 'react'
 
+// Hook for getting Sharon's text lines
+export function useSharonAgent() {
+  const [line, setLine] = useState("");
+
+  const speak = useCallback(async ({ stress, eyeContact }) => {
+    // Calls the service to get a mock line based on stress
+    const res = await getSharonLine({ stress, eyeContact });
+    setLine(res.text);
+  }, []);
+
+  return { line, speak };
+}
+
+// Hook for playing Sharon's voice via ElevenLabs
 export function useSharonVoice() {
   const audioCtxRef = useRef(null)
   const sourceRef   = useRef(null)

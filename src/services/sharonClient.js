@@ -8,50 +8,44 @@ const MOCK_LINES = [
   "Your confidence is slipping. I can hear it."
 ];
 
+// Ensure this matches your backend port
+const API_BASE = 'http://localhost:8787';
+
+/**
+ * FIXED: Added this missing export to resolve the terminal error
+ */
+export async function fetchSharonSpeech(text, tier = 'neutral') {
+  const res = await fetch(`${API_BASE}/api/tts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, tier }),
+  });
+
+  if (!res.ok) throw new Error(`TTS failed: ${res.status}`);
+  return await res.arrayBuffer();
+}
+
 export async function getSharonLine({ stress = 0, eyeContact = 100 } = {}) {
-  // ✅ STUB: no backend needed yet
-  // Deterministic-ish response based on inputs so it feels reactive
   const idx = Math.floor((stress * 7 + (100 - eyeContact) * 3) % MOCK_LINES.length);
   const text = MOCK_LINES[idx];
 
-    console.log("stress: " + stress);
-    let newHeartVal = 1;
-    /*Math.floor(stress/10) + 4;
-    if(newHeartVal > 9){
-      newHeartVal = 9;
-    }else if(newHeartVal < 1){
-      newHeartVal = 1;
-    }
-    console.log("before caps: " + newHeartVal);
-    newHeartVal = newHeartVal * (-1) + 10;*/
-
-    if(stress < 10){
-      newHeartVal = 9;
-    }else if(stress < 20){
-      newHeartVal = 8;
-    }else if(stress < 30){
-      newHeartVal = 7
-    }else if(stress < 40){
-      newHeartVal = 6
-    }else if(stress < 50){
-      newHeartVal = 5
-    }else if(stress < 60){
-      newHeartVal = 4
-    }else if(stress < 70){
-      newHeartVal = 3
-    }else if(stress < 80){
-      newHeartVal = 2;
-    }else if(stress < 90){
-      newHeartVal = 1
-    }else{
-      newHeartVal = 1
-    }
+  let newHeartVal = 1;
+  if(stress < 10) newHeartVal = 9;
+  else if(stress < 20) newHeartVal = 8;
+  else if(stress < 30) newHeartVal = 7;
+  else if(stress < 40) newHeartVal = 6;
+  else if(stress < 50) newHeartVal = 5;
+  else if(stress < 60) newHeartVal = 4;
+  else if(stress < 70) newHeartVal = 3;
+  else if(stress < 80) newHeartVal = 2;
+  else newHeartVal = 1;
     
-    fetch('http://localhost:3000/' + newHeartVal);
+  // Wrapped in try/catch so voice still works if Port 3000 is down
+  try {
+    fetch('http://localhost:3000/' + newHeartVal, { mode: 'no-cors' });
+  } catch (e) {
+    console.warn("Hardware server offline.");
+  }
 
-  // Return shape that matches future backend response
-  return {
-    text,
-    audioUrl: null // later: ElevenLabs mp3 url or base64
-  };
+  return { text, audioUrl: null };
 }
