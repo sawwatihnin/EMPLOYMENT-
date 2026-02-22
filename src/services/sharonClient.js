@@ -13,26 +13,49 @@ const API_BASE = 'http://localhost:8787';
 /**
  * Browser-native TTS — no API key needed
  */
-export function fetchSharonSpeech(text, tier = 'neutral') {
-  const synth = window.speechSynthesis
-  synth.cancel()
+export function fetchSharonSpeech(
+  text,
+  tier = "neutral",
+  { onStart, onEnd, onError } = {}
+) {
+  const synth = window.speechSynthesis;
 
-  const utter = new SpeechSynthesisUtterance(text)
+  // stop anything currently speaking
+  synth.cancel();
 
-  const voices = synth.getVoices()
-  const female = voices.find(v =>
-    v.name.includes('Samantha') ||
-    v.name.includes('Karen') ||
-    v.name.includes('Female') ||
-    (v.lang === 'en-US' && v.name.includes('Google'))
-  )
-  if (female) utter.voice = female
+  const utter = new SpeechSynthesisUtterance(text);
 
-  utter.rate   = tier === 'aggressive' ? 1.3 : tier === 'horror' ? 0.8 : 1.0
-  utter.pitch  = tier === 'horror' ? 0.4 : tier === 'cold' ? 0.8 : 1.0
-  utter.volume = 1.0
+  const pickVoiceAndSpeak = () => {
+    const voices = synth.getVoices();
+    const female = voices.find(v =>
+      v.name.includes("Samantha") ||
+      v.name.includes("Karen") ||
+      v.name.includes("Female") ||
+      (v.lang === "en-US" && v.name.includes("Google"))
+    );
+    if (female) utter.voice = female;
 
-  synth.speak(utter)
+    utter.rate   = tier === "aggressive" ? 1.3 : tier === "horror" ? 0.8 : 1.0;
+    utter.pitch  = tier === "horror" ? 0.4 : tier === "cold" ? 0.8 : 1.0;
+    utter.volume = 1.0;
+
+    utter.onstart = () => onStart?.();
+    utter.onend   = () => onEnd?.();
+    utter.onerror = (e) => onError?.(e);
+
+    synth.speak(utter);
+  };
+
+  // Some browsers load voices async; handle both cases
+  if (synth.getVoices().length === 0) {
+    const onVoices = () => {
+      synth.removeEventListener("voiceschanged", onVoices);
+      pickVoiceAndSpeak();
+    };
+    synth.addEventListener("voiceschanged", onVoices);
+  } else {
+    pickVoiceAndSpeak();
+  }
 }
 
 export async function getSharonLine({ stress = 0, eyeContact = 100 } = {}) {

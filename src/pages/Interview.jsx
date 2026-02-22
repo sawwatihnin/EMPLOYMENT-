@@ -39,6 +39,8 @@ export default function Interview() {
 
       e.preventDefault(); // stops page scroll
       setUserTalking(true);
+      // NEW: interrupt Sharon immediately
+      window.speechSynthesis.cancel();
     };
 
     const onKeyUp = (e) => {
@@ -74,10 +76,17 @@ export default function Interview() {
   }, [stress, eyeContact, speak]);
 
   useEffect(() => {
-  if (line) fetchSharonSpeech(line, tier)
-   }, [line])
+    if (!interviewStarted) return;
+    if (!line) return;
+  
+    // If the user is talking, don't start Sharon's speech yet
+    if (userTalking) return;
+  
+    playVoice(line, tier); // <-- this should set `speaking` true/false internally
+  }, [line, tier, interviewStarted, userTalking, playVoice]);
+
   // Recruiter talks when user is NOT talking
-  const recruiterTalking = interviewStarted && !userTalking;
+  const recruiterTalking = interviewStarted && speaking && !userTalking;
 
 
   return (
