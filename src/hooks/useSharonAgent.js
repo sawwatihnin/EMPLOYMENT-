@@ -15,42 +15,21 @@ export function useSharonAgent() {
 }
 
 // Hook for playing Sharon's voice via ElevenLabs
+// Hook for playing Sharon's voice via browser TTS
 export function useSharonVoice() {
-  const audioCtxRef = useRef(null)
-  const sourceRef   = useRef(null)
   const [speaking, setSpeaking] = useState(false)
 
-  function getCtx() {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
-    }
-    if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume()
-    return audioCtxRef.current
-  }
-
-  const speak = useCallback(async (text, tier = 'neutral') => {
-    if (!text || speaking) return
-    try {
-      setSpeaking(true)
-      sourceRef.current?.stop()
-
-      const arrayBuffer = await fetchSharonSpeech(text, tier)
-      const ctx = getCtx()
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-      const source = ctx.createBufferSource()
-      source.buffer = audioBuffer
-      source.connect(ctx.destination)
-      source.onended = () => setSpeaking(false)
-      sourceRef.current = source
-      source.start()
-    } catch (err) {
-      console.error('[Sharon Voice]', err.message)
-      setSpeaking(false)
-    }
-  }, [speaking])
+  const speak = useCallback((text, tier = 'neutral') => {
+    if (!text) return
+    setSpeaking(true)
+    fetchSharonSpeech(text, tier)
+    // estimate done based on text length
+    const duration = (text.length / 15) * 1000
+    setTimeout(() => setSpeaking(false), duration)
+  }, [])
 
   const stopSpeaking = useCallback(() => {
-    sourceRef.current?.stop()
+    window.speechSynthesis.cancel()
     setSpeaking(false)
   }, [])
 

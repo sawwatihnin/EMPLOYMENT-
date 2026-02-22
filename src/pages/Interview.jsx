@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { useSharonAgent } from "../hooks/useSharonAgent";
+import { useSharonAgent, useSharonVoice } from "../hooks/useSharonAgent";
 import RecruiterAvatar from "../components/RecruiterAvatar.jsx";
 
 export default function Interview() {
   const { line, speak } = useSharonAgent();
+  const { speak: playVoice, speaking } = useSharonVoice();
   const [stress, setStress] = useState(10);
+  const tier = stress < 30 ? "neutral" : stress < 60 ? "cold" : stress < 80 ? "aggressive" : "horror";
   const [eyeContact, setEyeContact] = useState(92);
 
   const [interviewStarted, setInterviewStarted] = useState(false);

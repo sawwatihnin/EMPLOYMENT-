@@ -8,21 +8,31 @@ const MOCK_LINES = [
   "Your confidence is slipping. I can hear it."
 ];
 
-// Ensure this matches your backend port
 const API_BASE = 'http://localhost:8787';
 
 /**
- * FIXED: Added this missing export to resolve the terminal error
+ * Browser-native TTS — no API key needed
  */
-export async function fetchSharonSpeech(text, tier = 'neutral') {
-  const res = await fetch(`${API_BASE}/api/tts`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, tier }),
-  });
+export function fetchSharonSpeech(text, tier = 'neutral') {
+  const synth = window.speechSynthesis
+  synth.cancel()
 
-  if (!res.ok) throw new Error(`TTS failed: ${res.status}`);
-  return await res.arrayBuffer();
+  const utter = new SpeechSynthesisUtterance(text)
+
+  const voices = synth.getVoices()
+  const female = voices.find(v =>
+    v.name.includes('Samantha') ||
+    v.name.includes('Karen') ||
+    v.name.includes('Female') ||
+    (v.lang === 'en-US' && v.name.includes('Google'))
+  )
+  if (female) utter.voice = female
+
+  utter.rate   = tier === 'aggressive' ? 1.3 : tier === 'horror' ? 0.8 : 1.0
+  utter.pitch  = tier === 'horror' ? 0.4 : tier === 'cold' ? 0.8 : 1.0
+  utter.volume = 1.0
+
+  synth.speak(utter)
 }
 
 export async function getSharonLine({ stress = 0, eyeContact = 100 } = {}) {
