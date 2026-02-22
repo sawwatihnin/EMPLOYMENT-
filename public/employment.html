@@ -216,6 +216,16 @@
   }
 
   /* Sharon avatar placeholder */
+
+  #recruiter-avatar-mount {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  }
+
   .sharon-container {
     position: relative;
     width: 280px; height: 380px;
@@ -801,6 +811,7 @@
 
         <div class="sharon-frame" id="sharon-frame">
           <div class="sharon-face-area" id="sharon-face">
+            <div id="recruiter-avatar-mount"></div>
             <!-- Abstract Sharon silhouette (3D model mount point) -->
             <div class="face-silhouette">
               <svg viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg" id="sharon-svg">

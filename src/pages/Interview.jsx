@@ -75,52 +75,55 @@ export default function Interview() {
 
 
   return (
-    <div style={{ width: "100vw", height: "100vh", overflow: "hidden", position: "relative" }}>
-      <iframe
-        src="/employment.html"
-        title="Employment Simulation"
-        style={{ width: "100%", height: "100%", border: "none" }}
-      />
+    <div style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <iframe
+          src="/employment.html"
+          title="Employment Simulation"
+          style={{ width: "100%", height: "100%", border: "none" }}
+        />
+  
+        {/* 3D recruiter overlay (responsive) */}
+        {interviewStarted && (
+          <div
+            style={{
+              position: "absolute",
+              /* anchor relative to the iframe viewport */
+              left: "28%",     // tweak
+              top: "9%",      // tweak
+              width: "22%",    // tweak
+              aspectRatio: "280 / 380", // keeps “portrait” shape
+              zIndex: 9000,
+              pointerEvents: "none",
+              overflow: "hidden", 
+              borderRadius: 12,
+            }}
+          >
+            <RecruiterAvatar
+              isRecruiterTalking={recruiterTalking}
+              evilMode={stress > 70}
+            />
+          </div>
+        )}
+  
+        {/* Overlay panel */}
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            zIndex: 9999,
+            padding: 12,
+            width: 320,
+            background: "rgba(0,0,0,0.65)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            color: "#fff",
+            fontFamily: "monospace",
+            fontSize: 12,
+            backdropFilter: "blur(6px)",
+          }}
+        >
 
-        {/* 3D recruiter overlay */}
-    {interviewStarted && (
-    <div
-      style={{
-        position: "fixed",
-        left: 240,        
-        top: 40,        
-        width: 400,       
-        height: 420,
-        zIndex: 9000,
-        pointerEvents: "none", 
-        overflow: "hidden",
-        borderRadius: 12,
-      }}
-    >
-      <RecruiterAvatar
-        isRecruiterTalking={recruiterTalking}
-        evilMode={stress > 70}  
-      />
-    </div>
-    )}
-
-      {/* Overlay panel (won't touch Claude file) */}
-      <div
-        style={{
-          position: "fixed",
-          top: 12,
-          left: 12,
-          zIndex: 9999,
-          padding: 12,
-          width: 320,
-          background: "rgba(0,0,0,0.65)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          color: "#fff",
-          fontFamily: "monospace",
-          fontSize: 12,
-          backdropFilter: "blur(6px)"
-        }}
-      >
         <div style={{ opacity: 0.7, marginBottom: 6 }}>SHARON AGENT (stub)</div>
         <div>stress: {stress}</div>
         <div>eyeContact: {eyeContact}%</div>
@@ -139,6 +142,7 @@ export default function Interview() {
         >
           Force line
         </button>
+      </div>
       </div>
     </div>
   );

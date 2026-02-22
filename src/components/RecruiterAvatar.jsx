@@ -329,18 +329,20 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
 
   // Compute a face-ish target and pass it up to the parent
   useEffect(() => {
-    if (!scene) return;
+    if (!group.current) return;
 
-    const box = new THREE.Box3().setFromObject(scene);
+    // compute box from the ACTUAL rendered group (includes scale/position)
+    group.current.updateWorldMatrix(true, true);
+
+    const box = new THREE.Box3().setFromObject(group.current);
     const center = new THREE.Vector3();
     const size = new THREE.Vector3();
     box.getCenter(center);
     box.getSize(size);
 
-    // "Face-ish" point: near the top of the model, slightly down from the very top.
-    const faceY = center.y + size.y * 0.35; // tweak 0.35 up/down as needed
+    const faceY = center.y + size.y * 0.20; // 0.20–0.35; tune
     onTarget?.([center.x, faceY, center.z]);
-  }, [scene, onTarget]);
+    }, [scene, onTarget]);
 
   return (
     <group ref={group}>
@@ -431,10 +433,7 @@ function CameraDebugger({ controlsRef }) {
 
 export default function RecruiterAvatar({ isRecruiterTalking = true, laserMode = false, fireMode = false, hornMode = false, evilMode = false }) {
   // Your chosen camera position from the console:
-  const cameraPos = useMemo(
-    () => [-4.401161533784951, 350.48002582376492, 35.38460289267974],
-    []
-  );
+  const cameraPos = useMemo(() => [-4.4, 150, 200], []);
 
   // Start with a placeholder target; update once the model loads.
   const [target, setTarget] = useState([0, 0, 0]);
