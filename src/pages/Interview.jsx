@@ -12,6 +12,8 @@ export default function Interview() {
 
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [userTalking, setUserTalking] = useState(false);
+  const [distance, setDist] = useState(10);
+  const [pastDist, setPastDist] = useState(10);
 
   useEffect(() => {
     const onMsg = (e) => {
@@ -23,6 +25,19 @@ export default function Interview() {
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, []);
+
+   useEffect(() => {
+  const interval = setInterval(() => {
+    fetch("http://localhost:3000")
+      .then((res) => res.text())
+      .then((data) => {
+        setDist(Number(data));
+      })
+      .catch((err) => console.error(err));
+  }, 3000); // adjust speed
+
+  return () => clearInterval(interval);
+}, []);
 
   // NEW: Spacebar listeners (hold-to-talk)
   useEffect(() => {
@@ -141,7 +156,9 @@ export default function Interview() {
 
         <div style={{ opacity: 0.7, marginBottom: 6 }}>SHARON AGENT (stub)</div>
         <div>stress: {stress}</div>
-        <div>eyeContact: {eyeContact}%</div>
+        <div>distance from screen: {distance} cm.</div>
+        <div>{ distance < 30 && "you are too close to the screen. no one wants to see your face that well."}</div>
+        <div>{ distance < 100 && "you are too far from the screen. get back here."}</div>
         <div style={{ marginTop: 8, color: "#ff6644" }}>{line}</div>
 
         <button
