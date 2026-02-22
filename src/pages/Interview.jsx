@@ -120,7 +120,7 @@ export default function Interview() {
               position: "absolute",
               /* anchor relative to the iframe viewport */
               left: "19%",     // tweak
-              top: "-11%",      // tweak
+              top: "-17%",      // tweak
               width: "40%",    // tweak
               aspectRatio: "280 / 380", // keeps “portrait” shape
               zIndex: 9000,

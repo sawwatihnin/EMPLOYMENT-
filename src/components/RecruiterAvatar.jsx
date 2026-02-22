@@ -3,8 +3,6 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
-
-
 /**
  * Sets an initial camera position + lookAt target.
  * Runs whenever position/target change (both are stable/memoized).
@@ -22,8 +20,40 @@ function InitialCamera({ position, target }) {
 }
 
 /**
+ * NEW: screen glitch overlay inside the Canvas (cheap fullscreen plane)
+ */
+function ScreenGlitch({ enabled }) {
+  const matRef = useRef(null);
+
+  useFrame(() => {
+    if (!enabled || !matRef.current) return;
+
+    // Mostly off, occasionally flicker
+    const flicker = Math.random() < 0.08 ? 0.035 + Math.random() * 0.05 : 0.0;
+    matRef.current.opacity = flicker;
+  });
+
+  if (!enabled) return null;
+
+  return (
+    <mesh position={[0, 0, 999]}>
+      {/* huge plane; camera sees it as overlay */}
+      <planeGeometry args={[5000, 5000]} />
+      <meshBasicMaterial
+        ref={matRef}
+        color={"#ff0000"}
+        transparent
+        opacity={0.0}
+        depthTest={false}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
+/**
  * Cheap "fire" background: rising ember particles behind the character.
- * This is intentionally simple (no shaders) but reads as "hellfire" when combined with red lighting.
  */
 function FireParticles({ enabled }) {
   const pointsRef = useRef(null);
@@ -32,7 +62,6 @@ function FireParticles({ enabled }) {
   const positions = useMemo(() => {
     const arr = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount; i++) {
-      // Spread in a wide-ish box; adjust these if your scene scale differs
       const x = (Math.random() - 0.5) * 600;
       const y = Math.random() * 250;
       const z = (Math.random() - 0.5) * 200;
@@ -52,13 +81,12 @@ function FireParticles({ enabled }) {
     const arr = attr.array;
 
     const t = clock.getElapsedTime();
-    const speed = 35; // units/sec
+    const speed = 35;
 
     for (let i = 0; i < particleCount; i++) {
       const idx = i * 3 + 1; // y
-      arr[idx] += speed * 0.016; // approx per frame; good enough for vibe
+      arr[idx] += speed * 0.016;
 
-      // Respawn at bottom when too high
       if (arr[idx] > 300) {
         arr[idx] = 0;
         arr[i * 3 + 0] = (Math.random() - 0.5) * 600;
@@ -68,7 +96,6 @@ function FireParticles({ enabled }) {
 
     attr.needsUpdate = true;
 
-    // Gentle pulsing via overall opacity-ish effect (done with scale)
     const pulse = 0.9 + 0.1 * Math.sin(t * 6.0);
     pts.scale.set(pulse, pulse, pulse);
   });
@@ -76,7 +103,7 @@ function FireParticles({ enabled }) {
   if (!enabled) return null;
 
   return (
-    <group position={[0, 0, -350]}>
+    <group position={[0, 100, -350]}>
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute
@@ -99,13 +126,34 @@ function FireParticles({ enabled }) {
 }
 
 /**
- * Loads the GLB, computes a "face-ish" target from its bounding box,
- * logs available animation clips, and plays a talk-like clip.
+ * Loads the GLB and controls head spin + head tilts + (optional) lasers/horns.
+ * NEW: head tilts + shadow face flicker support when evilMode is on.
  */
-function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
+function BusinessManAnimated({
+  onTarget,
+  isTalking,
+  laserMode,
+  hornMode,
+  headSpinToken,
+  evilMode,
+}) {
+  const headBone = useRef(null);
+  const spin = useRef({ active: false, start: 0, duration: 1.2, baseY: 0 });
+
+  // NEW: head tilt twitch controller
+  const tilt = useRef({ active: false, start: 0, duration: 0.12, baseZ: 0, delta: 0 });
+
   const group = useRef(null);
   const { scene, animations } = useGLTF("/models/business_man.glb");
   const { actions, names } = useAnimations(animations, group);
+
+  // NEW: shadow face flicker state
+  const shadow = useRef({
+    active: false,
+    endAt: 0,
+    cached: false,
+    originals: new Map(), // material -> { color, emissive, emissiveIntensity }
+  });
 
   // ---- Laser eyes anchored to actual eye bones (WORLD space) ----
   const { camera } = useThree();
@@ -124,7 +172,30 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
   useEffect(() => {
     if (!scene) return;
 
-    // These names came from your scene traversal logs:
+    const head = scene.getObjectByName("Head_06");
+    if (!head) {
+      console.warn("Couldn't find Head_06 in scene.");
+      return;
+    }
+
+    headBone.current = head;
+    spin.current.baseY = head.rotation.y;
+    tilt.current.baseZ = head.rotation.z;
+    console.log("✅ Head bone set:", head.name);
+  }, [scene]);
+
+  // Start head spin when token changes
+  useEffect(() => {
+    if (!headBone.current) return;
+
+    spin.current.active = true;
+    spin.current.start = performance.now();
+    spin.current.baseY = headBone.current.rotation.y;
+  }, [headSpinToken]);
+
+  useEffect(() => {
+    if (!scene) return;
+
     const l = scene.getObjectByName("Eye_L_015");
     const r = scene.getObjectByName("Eye_R_016");
 
@@ -135,36 +206,56 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
 
     eyeL.current = l;
     eyeR.current = r;
-
-    console.log("✅ Found eye bones:", l.name, r.name);
   }, [scene]);
 
   useEffect(() => {
     if (!scene) return;
 
-    // We saw Eye_* bones parented to Face_011 in your traversal.
-    // Prefer Face_011 directly; fallback to the eye parent.
     const face = scene.getObjectByName("Face_011");
     if (face) {
       faceBone.current = face;
-      console.log("✅ Found face bone for horns:", face.name);
       return;
     }
 
-    // fallback: if eyes exist, use their parent
     const l = scene.getObjectByName("Eye_L_015");
     if (l?.parent) {
       faceBone.current = l.parent;
-      console.log("✅ Using eye parent for horns:", l.parent.name);
       return;
     }
 
     console.warn("Could not find Face_011 (or eye parent) for horns.");
   }, [scene]);
 
-  // Update beams each frame in WORLD coordinates so it survives any parent transforms.
+  // Cache material originals once
+  useEffect(() => {
+    if (!scene) return;
+    if (shadow.current.cached) return;
+
+    scene.traverse((obj) => {
+      const m = obj.material;
+      if (!m) return;
+
+      // handle arrays of materials too
+      const mats = Array.isArray(m) ? m : [m];
+      for (const mat of mats) {
+        if (!mat) continue;
+        if (shadow.current.originals.has(mat)) continue;
+
+        shadow.current.originals.set(mat, {
+          color: mat.color ? mat.color.clone() : null,
+          emissive: mat.emissive ? mat.emissive.clone() : null,
+          emissiveIntensity:
+            typeof mat.emissiveIntensity === "number" ? mat.emissiveIntensity : null,
+        });
+      }
+    });
+
+    shadow.current.cached = true;
+  }, [scene]);
+
+  // Update beams each frame in WORLD coordinates + head spin + evil effects
   useFrame(() => {
-    if (!laserMode && !hornMode) return;
+    // ---------- lasers ----------
     if (laserMode) {
       if (!eyeL.current || !eyeR.current) return;
 
@@ -173,45 +264,31 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
       const upAxis = new THREE.Vector3(0, 1, 0);
       const quat = new THREE.Quaternion();
 
-      const length = 250; // increase if your scene scale is huge
-      const aimAt = camera.position; // shoot toward camera (dramatic)
+      const length = 250;
+      const aimAt = camera.position;
 
       const updateOne = (eyeObj, beamMesh, markerMesh, sideOffset = 0) => {
         if (!beamMesh) return;
 
-        // Eye origin in world space
         eyeObj.getWorldPosition(tmpPos);
-
-        // Slight offsets so beams don't overlap exactly (left/right separation)
         tmpPos.x += sideOffset;
 
-        // Direction from eye -> camera
         tmpDir.copy(aimAt).sub(tmpPos).normalize();
-
-        // Place beam midpoint forward from origin
         const mid = tmpPos.clone().add(tmpDir.clone().multiplyScalar(length / 2));
 
-        // Beam mesh transform
         beamMesh.position.copy(mid);
-
-        // Cylinder is aligned to Y axis by default, rotate it to match direction
         quat.setFromUnitVectors(upAxis, tmpDir);
         beamMesh.quaternion.copy(quat);
-
-        // Stretch to desired length (scale Y = length because cylinder height = 1)
         beamMesh.scale.set(1, length, 1);
 
-        // Eye marker (helps you visually confirm the origin)
-        if (markerMesh) {
-          markerMesh.position.copy(tmpPos);
-        }
+        if (markerMesh) markerMesh.position.copy(tmpPos);
       };
 
       updateOne(eyeL.current, beamL.current, eyeMarkerL.current, -0.2);
       updateOne(eyeR.current, beamR.current, eyeMarkerR.current, 0.2);
     }
 
-    // Update horns (world-space) so they follow head/face motion
+    // ---------- horns ----------
     if (hornMode && faceBone.current) {
       const base = faceBone.current;
 
@@ -220,55 +297,84 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
 
         const worldPos = base.localToWorld(localOffset.clone());
         hornMesh.position.copy(worldPos);
-
-        // Match head rotation
         base.getWorldQuaternion(hornMesh.quaternion);
-
-        // Slight tilt backward for drama
         hornMesh.rotateX(-0.35);
       };
 
-      // Offsets are in the face bone's local space.
-      // These are intentionally big-ish; you'll tune after you see them.
-      setHorn(hornL.current, new THREE.Vector3(-12, 35, 8));
+      setHorn(hornL.current, new THREE.Vector3(-12, 40, 8));
       setHorn(hornR.current, new THREE.Vector3(12, 35, 8));
     }
+
+    // ---------- head spin ----------
+    if (spin.current.active && headBone.current) {
+      const now = performance.now();
+      const t = (now - spin.current.start) / (spin.current.duration * 1000);
+
+      const eased = t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+      headBone.current.rotation.y = spin.current.baseY + eased * Math.PI * 2;
+
+      if (t >= 1) {
+        headBone.current.rotation.y = spin.current.baseY;
+        spin.current.active = false;
+      }
+    }
+
+    // ---------- NEW: random head tilts (evil mode) ----------
+    if (evilMode && headBone.current) {
+      // Occasionally start a tilt twitch
+      if (!tilt.current.active && Math.random() < 0.01) {
+        tilt.current.active = true;
+        tilt.current.start = performance.now();
+        tilt.current.baseZ = headBone.current.rotation.z;
+        tilt.current.delta = (Math.random() - 0.5) * 0.9; // twitch strength
+      }
+    }
+
+    // Apply tilt twitch if active
+    if (tilt.current.active && headBone.current) {
+      const now = performance.now();
+      const t = (now - tilt.current.start) / (tilt.current.duration * 1000);
+
+      // quick in/out (triangle)
+      const tri = t < 0.5 ? t / 0.5 : (1 - t) / 0.5;
+      headBone.current.rotation.z = tilt.current.baseZ + tri * tilt.current.delta;
+
+      if (t >= 1) {
+        headBone.current.rotation.z = tilt.current.baseZ;
+        tilt.current.active = false;
+      }
+    }
+
+    // ---------- NEW: shadow face flicker (evil mode) ----------
+    if (evilMode && shadow.current.cached) {
+      // Rarely trigger flicker
+      if (!shadow.current.active && Math.random() < 0.008) {
+        shadow.current.active = true;
+        shadow.current.endAt = performance.now() + 90 + Math.random() * 80; // 90–170ms
+
+        // apply darkness now
+        for (const [mat] of shadow.current.originals) {
+          if (mat.color) mat.color.set("#120000");
+          if (mat.emissive) mat.emissive.set("#000000");
+          if (typeof mat.emissiveIntensity === "number") mat.emissiveIntensity = 0.0;
+          mat.needsUpdate = true;
+        }
+      }
+
+      // restore when time is up
+      if (shadow.current.active && performance.now() >= shadow.current.endAt) {
+        for (const [mat, orig] of shadow.current.originals) {
+          if (mat.color && orig.color) mat.color.copy(orig.color);
+          if (mat.emissive && orig.emissive) mat.emissive.copy(orig.emissive);
+          if (typeof mat.emissiveIntensity === "number" && orig.emissiveIntensity != null) {
+            mat.emissiveIntensity = orig.emissiveIntensity;
+          }
+          mat.needsUpdate = true;
+        }
+        shadow.current.active = false;
+      }
+    }
   });
-  // ---- End laser eyes ----
-
-  // ---- Scene graph debugger ----
-  // Press "o" to print all object names/types in the loaded model.
-  // This helps you find eye/head bones like "LeftEye", "RightEye", "mixamorigHead", etc.
-  useEffect(() => {
-    if (!scene) return;
-
-    const printSceneGraph = () => {
-      console.log("===== GLB Scene Graph (type | name | parent) =====");
-      scene.traverse((obj) => {
-        // Print even if name is empty, but mark it clearly.
-        const name = obj.name && obj.name.length ? obj.name : "(no-name)";
-        const parentName =
-          obj.parent && obj.parent.name && obj.parent.name.length
-            ? obj.parent.name
-            : "(no-parent-name)";
-        console.log(`${obj.type} | ${name} | parent: ${parentName}`);
-      });
-      console.log("===== END GLB Scene Graph =====");
-    };
-
-    // Print once on load (comment this out if it’s too noisy)
-    printSceneGraph();
-
-    const onKeyDown = (e) => {
-      if (e.key.toLowerCase() !== "o") return;
-      printSceneGraph();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    console.log('SceneGraphDebugger ready: press "o" to print the GLB scene graph.');
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [scene]);
-  // ---- End scene graph debugger ----
 
   // Log clip names once they exist
   useEffect(() => {
@@ -298,7 +404,7 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
     );
   }, [names]);
 
-  // Start a default idle so the character isn't frozen (if we have an idle-ish clip)
+  // Start a default idle
   useEffect(() => {
     if (!idleClipName) return;
     const idle = actions?.[idleClipName];
@@ -310,18 +416,14 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
 
   // Toggle recruiter talking on/off
   useEffect(() => {
-    // If we don't have a talk clip, there's nothing to toggle.
     if (!talkClipName) return;
-
     const talk = actions?.[talkClipName];
     if (!talk) return;
 
     if (isTalking) {
       talk.reset().fadeIn(0.15).play();
     } else {
-      // Fade out and stop to avoid "mouth stuck open" pose
       talk.fadeOut(0.15);
-      // stop a tick later so fadeOut can apply
       const t = setTimeout(() => talk.stop(), 160);
       return () => clearTimeout(t);
     }
@@ -331,25 +433,22 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
   useEffect(() => {
     if (!group.current) return;
 
-    // compute box from the ACTUAL rendered group (includes scale/position)
     group.current.updateWorldMatrix(true, true);
-
     const box = new THREE.Box3().setFromObject(group.current);
     const center = new THREE.Vector3();
     const size = new THREE.Vector3();
     box.getCenter(center);
     box.getSize(size);
 
-    const faceY = center.y + size.y * 0.20; // 0.20–0.35; tune
+    const faceY = center.y + size.y * 0.20;
     onTarget?.([center.x, faceY, center.z]);
-    }, [scene, onTarget]);
+  }, [scene, onTarget]);
 
   return (
     <group ref={group}>
-      {/* tweak scale/position as needed for your specific model */}
       <primitive object={scene} scale={1.5} position={[0, -1.0, 0]} />
 
-      {/* Eye origin markers (only visible in laser mode) */}
+      {/* Eye origin markers + beams */}
       {laserMode ? (
         <>
           <mesh ref={eyeMarkerL}>
@@ -361,7 +460,6 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
             <meshStandardMaterial emissive={"#ff0000"} emissiveIntensity={20} toneMapped={false} />
           </mesh>
 
-          {/* Laser beams (cylinders scaled in useFrame) */}
           <mesh ref={beamL}>
             <cylinderGeometry args={[0.6, 0.6, 1, 12]} />
             <meshStandardMaterial
@@ -383,7 +481,7 @@ function BusinessManAnimated({ onTarget, isTalking, laserMode, hornMode }) {
         </>
       ) : null}
 
-      {/* Devil horns (only visible in horn mode) */}
+      {/* Devil horns */}
       {hornMode ? (
         <>
           <mesh ref={hornL}>
@@ -414,9 +512,7 @@ function CameraDebugger({ controlsRef }) {
       );
 
       const tgtVec = controlsRef?.current?.target;
-      const tgt = tgtVec
-        ? tgtVec.toArray().map((n) => Number(n.toFixed(6)))
-        : null;
+      const tgt = tgtVec ? tgtVec.toArray().map((n) => Number(n.toFixed(6))) : null;
 
       console.log("📸 Camera position:", pos);
       console.log("🎯 Controls target:", tgt);
@@ -431,14 +527,85 @@ function CameraDebugger({ controlsRef }) {
   return null;
 }
 
-export default function RecruiterAvatar({ isRecruiterTalking = true, laserMode = false, fireMode = false, hornMode = false, evilMode = false }) {
-  // Your chosen camera position from the console:
+/**
+ * NEW: micro camera jitter + sudden light drops controller
+ */
+function EvilCameraAndLights({ enabled, cameraPos, ambientRef, dirRef }) {
+  const { camera } = useThree();
+  const base = useRef({
+    cam: new THREE.Vector3(cameraPos[0], cameraPos[1], cameraPos[2]),
+    ambient: 1.2,
+    dir: 1.2,
+  });
+
+  useEffect(() => {
+    // reset when turning off evil mode
+    if (!enabled) {
+      camera.position.copy(base.current.cam);
+      if (ambientRef.current) ambientRef.current.intensity = base.current.ambient;
+      if (dirRef.current) dirRef.current.intensity = base.current.dir;
+    }
+  }, [enabled, camera, ambientRef, dirRef]);
+
+  useFrame(() => {
+    if (!enabled) return;
+
+    const t = performance.now() * 0.001;
+
+    // --- micro jitter ---
+    camera.position.x = base.current.cam.x + Math.sin(t * 35) * 0.25;
+    camera.position.y = base.current.cam.y + Math.cos(t * 29) * 0.18;
+    camera.position.z = base.current.cam.z + Math.sin(t * 31) * 0.12;
+
+    // --- sudden light drops ---
+    if (ambientRef.current && dirRef.current) {
+      // mostly normal, occasionally "dip"
+      const drop = Math.random() < 0.03 ? 0.25 + Math.random() * 0.25 : 1.0;
+
+      // smooth a tiny bit so it's not nauseating
+      ambientRef.current.intensity = THREE.MathUtils.lerp(
+        ambientRef.current.intensity,
+        base.current.ambient * drop,
+        0.15
+      );
+      dirRef.current.intensity = THREE.MathUtils.lerp(
+        dirRef.current.intensity,
+        base.current.dir * (0.85 * drop),
+        0.15
+      );
+    }
+  });
+
+  return null;
+}
+
+export default function RecruiterAvatar({
+  isRecruiterTalking = true,
+  laserMode = false,
+  fireMode = false,
+  hornMode = false,
+  evilMode = false,
+}) {
   const cameraPos = useMemo(() => [-4.4, 150, 200], []);
 
-  // Start with a placeholder target; update once the model loads.
   const [target, setTarget] = useState([0, 0, 0]);
-
   const controlsRef = useRef(null);
+
+  const [headSpinToken, setSpinToken] = useState(0);
+
+  // NEW: keep light refs so we can do dips
+  const ambientRef = useRef(null);
+  const dirRef = useRef(null);
+
+  useEffect(() => {
+    if (!evilMode) return;
+
+    const interval = setInterval(() => {
+      setSpinToken((n) => n + 1);
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [evilMode]);
 
   const lasersOn = laserMode || evilMode;
   const hornsOn = hornMode || evilMode;
@@ -455,19 +622,34 @@ export default function RecruiterAvatar({ isRecruiterTalking = true, laserMode =
           far: 2000,
         }}
       >
-        {/* Force camera lookAt; will update once target is computed */}
         <InitialCamera position={cameraPos} target={target} />
 
+        {/* NEW: micro camera jitter + light drops when evil */}
+        <EvilCameraAndLights
+          enabled={evilMode}
+          cameraPos={cameraPos}
+          ambientRef={ambientRef}
+          dirRef={dirRef}
+        />
+
         {/* Lights */}
-        <ambientLight intensity={fireOn ? 0.35 : 1.2} />
-        <directionalLight position={[3, 5, 2]} intensity={fireOn ? 0.55 : 1.2} />
+        <ambientLight ref={ambientRef} intensity={fireOn ? 0.35 : 1.2} />
+        <directionalLight ref={dirRef} position={[3, 5, 2]} intensity={fireOn ? 0.55 : 1.2} />
 
         {/* Fire background */}
         <FireParticles enabled={fireOn} />
 
+        {/* NEW: subtle glitch overlay */}
+        <ScreenGlitch enabled={evilMode} />
+
         {/* Red wash light when in evil/fire mode */}
         {fireOn ? (
-          <pointLight position={[target[0], target[1] + 80, target[2] + 150]} intensity={10} distance={2000} color={"#ff2200"} />
+          <pointLight
+            position={[target[0], target[1] + 80, target[2] + 150]}
+            intensity={10}
+            distance={2000}
+            color={"#ff2200"}
+          />
         ) : null}
 
         {/* Debug helpers */}
@@ -477,7 +659,6 @@ export default function RecruiterAvatar({ isRecruiterTalking = true, laserMode =
           <meshStandardMaterial />
         </mesh>
 
-        {/* GLB loader uses Suspense */}
         <Suspense
           fallback={
             <mesh>
@@ -486,12 +667,17 @@ export default function RecruiterAvatar({ isRecruiterTalking = true, laserMode =
             </mesh>
           }
         >
-          <BusinessManAnimated onTarget={setTarget} isTalking={isRecruiterTalking} laserMode={lasersOn} hornMode={hornsOn} />
+          <BusinessManAnimated
+            onTarget={setTarget}
+            isTalking={isRecruiterTalking}
+            laserMode={lasersOn}
+            hornMode={hornsOn}
+            headSpinToken={headSpinToken}
+            evilMode={evilMode}   // NEW: enables head tilt + shadow flicker
+          />
         </Suspense>
 
-        {/* Orbit controls */}
         <OrbitControls ref={controlsRef} makeDefault target={target} enablePan={false} />
-
         <CameraDebugger controlsRef={controlsRef} />
       </Canvas>
     </div>
